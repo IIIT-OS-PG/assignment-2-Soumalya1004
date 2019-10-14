@@ -82,8 +82,16 @@ void saveclientdetails(int sockfd, FILE *fp, char *Buff){
     n=recv(sockfd, Buff, bufflen, 0); //chunk pattern
     //strcpy(cc->cpattern, Buff);
     filltrackerinfo(Buff, fp, n, bufflen);
+    bzero(Buff, sizeof(Buff));    
+    fputs(" ",fp);
+    n=recv(sockfd, &bufflen, sizeof(bufflen), 0);
+    n=recv(sockfd, Buff, bufflen, 0); //filelocation
+    // // receivestring(Buff, sockfd);
+    cout << "Received";
+    cout << Buff << endl;
+    filltrackerinfo(Buff, fp, n, bufflen);
     bzero(Buff, sizeof(Buff));
-    //fputs(" ", fp);
+    // fputs(" ", fp);
     fputs("\n",fp);
     //vpdt.push_back(cc);    
 }
@@ -104,7 +112,7 @@ void sendpeerdetails(int sockfd, FILE *fp){
         //printf("%s\n", c);
         string strr(c);
         // cout << strr.length()<<endl;        
-        cout << strr.length()<<" " <<n << endl;
+        //cout << strr.length()<<" " <<n << endl;
         //if(n==0){break;}
         if(strr.length() <= 6 ){continue;}  
         char * cip = strtok(c, " ");        
@@ -113,7 +121,8 @@ void sendpeerdetails(int sockfd, FILE *fp){
         char *  cfname = strtok(0, " ");
         char *  cnoc = strtok(0, " ");
         char *  cSHA = strtok(0, " ");
-        char *  cpatt = strtok(0, "\n");        
+        char *  cpatt = strtok(0, " ");        
+        char *  cpath = strtok(0, "\n"); 
         if(strcmp(Buff, cfname) == 0){
             //strcpy(Buff,s.c_str());            
             sendstring(Buf1, cip, sockfd);
@@ -123,6 +132,8 @@ void sendpeerdetails(int sockfd, FILE *fp){
             sendstring(Buf1, cnoc, sockfd);
             sendstring(Buf1, cSHA, sockfd);
             sendstring(Buf1, cpatt, sockfd);
+            sendstring(Buf1, cpath, sockfd);
+            // cout <<"File path " <<cpath << endl;
             //cout << cip << " " << cport << " "<<cpatt <<endl;
         }    
          memset(c, '\0', sizeof(c));      

@@ -59,10 +59,19 @@ void * sender(void *tmp){
     bzero(Buff, sizeof(Buff));
     receivestring(Buff, sockfd);  //filename
     cout << Buff << endl;
-    FILE *fp = fopen(Buff, "r");
+    //FILE *fp = fopen(Buff, "r");
     bzero(Buff, sizeof(Buff));
+    bzero(Buff, sizeof(Buff));
+    receivestring(Buff, sockfd);  //filepath
+    cout<<"E" << Buff << "E"<<endl;
+    string sf(Buff);
+    Buff[sf.length()]='\0';
+    FILE *fp = fopen(Buff, "r");
+    if(fp==NULL){cout<<"Could not open file "<<endl;}
+    //bzero(Buff, sizeof(Buff));
     long val;int i;
-    recv(sockfd, &i, sizeof(i), 0);  //chunk number    
+    recv(sockfd, &i, sizeof(i), 0);  //chunk number  
+    cout << "Cnumer " << i <<endl;  
     val = i * chunksize;
     fseek(fp, val, SEEK_SET);
     int size=chunksize;
@@ -86,6 +95,7 @@ void * sender(void *tmp){
     //     size-=n;
     // }
     // fclose(fp);
+    fclose(fp);
     close(sockfd);
 }
 void * server(void *tmp){
@@ -226,16 +236,56 @@ int main(int argc, char *argv[]){
             // cin >> argu;
             //cin >> ws;            
             //string str = "/media/soumalya/New\ Volume/Ebooks_Mtech/sem1/Operating\ System/Assignment2/Assignment2_VS/"+argu;            char fname[fnamesize];
+            cout << "Enter file path ";
+            char filepath[BUFF_SIZE];
             char fname[fnamesize];
-            strcpy(fname, argu.c_str());
-            FILE *fp = fopen(fname, "r");
+            string line;
+            cin >> filepath;
+            // strcpy(filepath,argv[3]);
+            //cout << filepath <<endl;
+            //cin >> line;
+            // gets(line);            
+            // bzero(Buff, sizeof(Buff));
+            // strcpy(Buff, line.c_str());
+            // cout << Buff << endl;
+            // bzero(Buff, sizeof(Buff));
+            //fgets(filepath, BUFF_SIZE, stdin); 
+            // scanf("%[^\n]%*c", filepath);
+            //cout << line <<endl;
+
+            char *arguments[20];int ind=0;
+            char filepath1[BUFF_SIZE];
+            strcpy(filepath1, filepath);
+            char *t = strtok(filepath1, "/");
+            while (t != NULL){
+                arguments[ind] = t;
+                //cout << ind << " " << arguments[ind] << endl;
+                
+                t=strtok(NULL, "/");
+                ind++;
+            }
+            cout<< arguments[ind-1]<<endl;
+            // char *t = strtok(arr, "|");
+            // //argu[0] = token;
+            // while (t != NULL)
+            // {   argu[i] = t;
+            //     t = strtok(NULL, "|");
+            //     i++;
+            // }
+            //fname = arguments[ind-1];
+            strcpy(fname, arguments[ind-1]);
+            cout << fname << endl;
+            //strcpy(fname, argu.c_str());
+            FILE *fp = fopen(filepath, "r");
             fseek(fp, 0, SEEK_END);
             int size = ftell(fp);
             rewind(fp);
             cout << size;    
             int numberofchunks = ceil(size*1.0/chunksize);
-            sendclientdetails(sockfd, ip, prt, groupid, argu, Buff, numberofchunks);    
+            sendclientdetails(sockfd, ip, prt, groupid, fname, Buff, numberofchunks);             
             sendSHAdetails(sockfd, fp);
+            sendstring(Buff, filepath, sockfd);   
+            cout << "Sent" << endl;
             fclose(fp);
         }
         else if(x==2){
@@ -243,6 +293,7 @@ int main(int argc, char *argv[]){
             //Download
             // printf("\nEnter file name ");
             // cin >> argu;
+            v.clear();
             char fname[fnamesize];
             strcpy(fname, argu.c_str());
             cout << fname <<endl;
@@ -256,6 +307,7 @@ int main(int argc, char *argv[]){
                 // printf("%s%s%s", pd1->ip, pd1->port, pd1->group);
                 // printf("%s%s%s", pd1->fn, pd1->noc, pd1->filesha);
                 // printf("%sE \n", pd1->cpatt);
+                printf("%s \n", pd1->cpath);
                 string s3 = regex_replace(pd1->cpatt, std::regex("^ +| +$|( ) +"), "$1");
                 strcpy(pd1->cpatt, s3.c_str());
                 string stri(pd1->cpatt);
@@ -297,6 +349,8 @@ int main(int argc, char *argv[]){
                         strcpy(ki->conip, vecpeers[k]->ip);
                         strcpy(ki->conport, vecpeers[k]->port);
                         strcpy(ki->ptr, vecpeers[k]->fn);
+                        //cout << vecpeers[k]->cpath;
+                        strcpy(ki->cpath, vecpeers[k]->cpath);
                         //ki->fp1 = fopen(ki->ptr, "r");
                         // // ki->fp1=fp;
                         // //cout << "PKB: BT " << ki->client << " " << ki->chunk << "\n";

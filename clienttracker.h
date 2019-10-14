@@ -9,6 +9,7 @@ struct peerdetail{
     char noc[10];
     char filesha[chunksize];
     char cpatt[BUFF_SIZE];
+    char cpath[TRANSFER_SIZE];
 };
 vector<peerdetail *> v;
 void fillfileinfo(char Buff[], FILE *fp, int n, int bufflen){    
@@ -135,7 +136,10 @@ void getpeerdetails(char fname[], int sockfd, char ip[],
         strcpy(pd->filesha, Buff);
         receivestring(Buff, sockfd);        
         strcpy(pd->cpatt, Buff);
-        // printf("%s\n", Buff);   
+        receivestring(Buff, sockfd);        
+        strcpy(pd->cpath, Buff);
+        // cout <<"File path " <<pd->cpath << endl;
+        // printf("Cpath %s\n", Buff);   
         v.push_back(pd);     
     }            
     // n=recv(sockfd, &bufflen, sizeof(bufflen), 0);
