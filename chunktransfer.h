@@ -6,6 +6,8 @@ struct clientchunk{
     FILE * fp1;
     char conip[BUFF_SIZE];
     char conport[BUFF_SIZE];
+    char cpath[TRANSFER_SIZE];
+    char downpath[BUFF_SIZE];
 };
 void * kthclient(void *tmp){
     char Buff[chunksize];   
@@ -31,6 +33,8 @@ void * kthclient(void *tmp){
     sendstring(Buff, cc->conport, sockfd); //port
     sendstring(Buff, cc->conip, sockfd);  //ip
     sendstring(Buff, cc->ptr, sockfd); //filename
+    cout << cc->cpath << endl;
+    sendstring(Buff, cc->cpath, sockfd); //filepath
     send(sockfd, &cc->chunk, sizeof(cc->chunk), 0);//chunk number
     
     //send(sockfd, cc->conport, sizeof(cc->conport), 0); 
@@ -38,13 +42,13 @@ void * kthclient(void *tmp){
          
     val = i * chunksize;
 
-    FILE * res = fopen("/media/soumalya/New\ Volume/Ebooks_Mtech/sem1/Operating\ System/Assignment2/Assignment2_VS/result.jpg", "r+"); 
-    
+    //FILE * res = fopen("/media/soumalya/New\ Volume/Ebooks_Mtech/sem1/Operating\ System/Assignment2/Assignment2_VS/result.jpg", "r+"); 
+    FILE * res = fopen(cc->downpath, "r+");
     // fseek(fp, val, SEEK_SET);
     fseek(res, val, SEEK_SET);
     char Bufft[TRANSFER_SIZE];
     int size=chunksize; int n;
-    while((n=recv(sockfd, Bufft, BUFF_SIZE, 0))>0 && size > 0){
+    while((n=recv(sockfd, Bufft, sizeof(Bufft), 0))>0 && size > 0){
         fwrite(Bufft, sizeof(char), n, res);        
         bzero(Bufft, sizeof(Bufft));
         size=size-n;

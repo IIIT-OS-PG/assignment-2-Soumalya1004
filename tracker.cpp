@@ -90,12 +90,26 @@ void saveclientdetails(int sockfd, FILE *fp, char *Buff){
     cout << "Received";
     cout << Buff << endl;
     filltrackerinfo(Buff, fp, n, bufflen);
+    fputs(" ",fp);
     bzero(Buff, sizeof(Buff));
-    // fputs(" ", fp);
+    n=recv(sockfd, &bufflen, sizeof(bufflen), 0);
+    n=recv(sockfd, Buff, bufflen, 0); //user info
+    //strcpy(cc->cpattern, Buff);
+    filltrackerinfo(Buff, fp, n, bufflen);
+    bzero(Buff, sizeof(Buff));   
     fputs("\n",fp);
     //vpdt.push_back(cc);    
 }
-
+bool isonline(char buff[BUFF_SIZE]){
+    for (auto it=udv.begin(); it!=udv.end(); it++){
+        struct userdetail *ud=*it;
+        if(strcmp(ud->uid, buff)==0 && ud->status){
+            return true;
+        }
+        cout << ud->uid << " " << ud->password << " " << ud->status << endl;        
+    }
+    return false;
+}
 void sendpeerdetails(int sockfd, FILE *fp){
     int n,bufflen;
     char Buff[BUFF_SIZE];
@@ -122,8 +136,9 @@ void sendpeerdetails(int sockfd, FILE *fp){
         char *  cnoc = strtok(0, " ");
         char *  cSHA = strtok(0, " ");
         char *  cpatt = strtok(0, " ");        
-        char *  cpath = strtok(0, "\n"); 
-        if(strcmp(Buff, cfname) == 0){
+        char *  cpath = strtok(0, " "); 
+        char *  cuser = strtok(0, "\n");        
+        if(strcmp(Buff, cfname) == 0 && isonline(cuser)){
             //strcpy(Buff,s.c_str());            
             sendstring(Buf1, cip, sockfd);
             sendstring(Buf1, cport, sockfd);
@@ -153,7 +168,8 @@ void sendpeerdetails(int sockfd, FILE *fp){
 void showusers(){
     for (auto it=udv.begin(); it!=udv.end(); it++){
         struct userdetail *ud=*it;
-        cout << ud->uid << " " << ud->password << " " << ud->status << endl;        
+        //cout << ud->uid << " " << ud->password << " " << ud->status << endl;        
+        cout << ud->uid << " " << ud->status << endl;        
     }
 }
 void * sockconnect(void *tmp){     
@@ -297,8 +313,34 @@ int main(int argc, char *argv[]){
     this_thread::sleep_for(10s);
     loaduserinfo();
     showusers();
+
+    char Buff[BUFF_SIZE];
+    vector < pair < char[BUFF_SIZE], unsigned int > > tip(2);
+    string argu=argv[1]; 
+    int groupid=1;
+    // cout << "Enter Tracker port to connect ";
+    // cin >> p;
+    char *k, *kv;char ip[BUFF_SIZE];
+    FILE *ti=fopen(argu.c_str(), "r");
+    int tip_i=0;
+    while(fgets(Buff, sizeof(Buff), ti)!=NULL){
+        k = strtok(Buff, " ");
+        kv = strtok(0, "\n");
+        if(!k || !kv){cout << "Error iitializing data";return -1;}
+        strcpy(tip[tip_i].first, k);
+        tip[tip_i].second=atoi(kv);
+        tip_i++;
+        //break;
+        //cout << k << " " << v;
+        // ump[k]=atoi(v);
+    }
+    fclose(ti);
+
+    int tracker_no=atoi(argv[2])-1;
+    
+
     //cout << "Connected";    
-    int port = atoi(argv[1]);
+    int port = tip[tracker_no].second;
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd <= 0){
         cerr << "Cannot create socket";
@@ -307,7 +349,9 @@ int main(int argc, char *argv[]){
     struct sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
-    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    //address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    address.sin_addr.s_addr = inet_addr(tip[tracker_no].first);
+    cout << tip[tracker_no].first << " " << tip[tracker_no].second << endl;
     int addrlen = sizeof(address);
     int b = bind(server_fd, (struct sockaddr *)&address, sizeof(address));
     if(b<0){

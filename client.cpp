@@ -5,6 +5,7 @@
 using namespace std;
 //int port;
 map < string, int > ump;
+char clientip[BUFF_SIZE];
 struct client_details{
     int sock;
     struct sockaddr address;
@@ -112,7 +113,7 @@ void * server(void *tmp){
     struct sockaddr_in address;
     address.sin_family = AF_INET;
     address.sin_port = htons(*port);
-    address.sin_addr.s_addr = inet_addr("127.0.0.1"); 
+    address.sin_addr.s_addr = inet_addr(clientip); 
     int addrlen = sizeof(address);
     int b = bind(server_fd, (struct sockaddr *)&address, sizeof(address));
     if(b<0){
@@ -150,13 +151,46 @@ void setcommandinfo(){
     } 
     fclose(ci);     
 }
+void checkSHA(FILE *fp, char Buffer[chunksize]){
+    unsigned char Buff[chunksize];
+    char s[chunksize];
+    int count =0,n,i;
+    fseek(fp, 0, SEEK_END);
+    int size = ftell(fp);
+    rewind(fp);
+    int numberofchunks = ceil((size*1.0 / chunksize));
+    cout << (size / chunksize) << endl;
+    while((n=fread(Buff, sizeof(char), chunksize, fp))>0 && size>0){        
+        unsigned char obuf[10];
+        SHA1(Buff, sizeof(Buff), obuf);
+        count+=1;        
+        for(i=0; i<10; i++) {
+        //printf("%02x ", obuf[i]);
+        char buf[100];
+        sprintf((char*)&buf,"%02x", obuf[i]);
+        strcat(s,buf);   
+        memset(buf, '\0', 100);
+        }      
+        memset(Buff, '\0', sizeof(Buff));
+        cout << endl;        
+    }
+    //fclose(fp);
+    cout << endl << count << endl;
+    //printf("\n%s", s);
+    string st(s);
+    string sst(Buffer);
+    if(strcmp(st.c_str(), sst.c_str()) == 0){
+        cout << "Download Successful " << endl;
+    }
+}
 int main(int argc, char *argv[]){
     setcommandinfo();
     // unordered_map < string, unsigned int > tip;
+    strcpy(clientip, argv[1]);
     vector < pair < char[BUFF_SIZE], unsigned int > > tip(2);
     pthread_t serverthread;
     int th;
-    int prt = atoi(argv[1]);
+    int prt = atoi(argv[2]);
     char uid1[BUFF_SIZE],pass1[BUFF_SIZE];
     //cout << "Server port " << port << endl;   
     th=pthread_create(&serverthread, NULL, server, (void *)&prt);
@@ -175,12 +209,12 @@ int main(int argc, char *argv[]){
     //loaduserinfo();
     char Buff[BUFF_SIZE];
     int n;  
-    string argu=argv[2]; 
+    string argu=argv[3]; 
     int groupid=1;
     // cout << "Enter Tracker port to connect ";
     // cin >> p;
     char *k, *kv;char ip[BUFF_SIZE];unsigned int port = p;
-    FILE *ti=fopen("trackerinfo.txt", "r");
+    FILE *ti=fopen(argu.c_str(), "r");
     int tip_i=0;
     while(fgets(Buff, sizeof(Buff), ti)!=NULL){
         k = strtok(Buff, " ");
@@ -196,8 +230,9 @@ int main(int argc, char *argv[]){
     fclose(ti);
     while(1){
         int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        char ip[] = "127.0.0.1";
-        //strcpy(ip, tip[0].first);
+        //char ip[] = "127.0.0.1";
+        char ip[BUFF_SIZE];
+        strcpy(ip, tip[0].first);
         p=tip[0].second;
         unsigned int port = p;
         struct sockaddr_in address;
@@ -218,29 +253,54 @@ int main(int argc, char *argv[]){
             }
             else{
                 cout << "Backup tracker up" << endl;  
-                cout << "Connected to "<< ip << " " << p <<endl;
+                cout << "Connected to "<< ip << " " << port <<endl;
             }            
         }
         else{
-            cout << "Connected to "<< ip << " " << p <<endl;
+            cout << "Connected to "<< ip << " " << port <<endl;
         }
-        cout << endl << "1 for Upload 2 for download test";
-        cout << endl << "3 for Registration 4 for Login";
-        cout << endl << "5 for Logout";
-        int x;cin >> x;        
+        // cout << endl << "1 for Upload 2 for download test";
+        // cout << endl << "3 for Registration 4 for Login";
+        // cout << endl << "5 for Logout" << endl;
+
+        string command;
+        cout << "Enter command ";
+        getline(cin, command);
+        cout << command << endl;
+        char commandarr[BUFF_SIZE];
+        strcpy(commandarr, command.c_str());
+        char *argument[20];int index=0;
+        //bzero(argument, sizeof(argument));
+        char *t = strtok(commandarr, " ");
+        while (t != NULL){
+            argument[index] = t;
+            //cout << index << " " << argument[index] << endl;            
+            t=strtok(NULL, " ");
+            index++;
+        }
+        int x=ump[argument[0]];
+        //cout << x << " ";         
+        //cin >> x;        
         send(sockfd, &x, sizeof(x), 0);
         if(x==1){
+            string logg(uid1);
+            if(logg.length()==0){
+                cout << "Please login to upload file " << endl;
+                bzero(argument, sizeof(argument));
+                continue;
+            }
             // send(sockfd, &x, sizeof(x), 0);
             //Upload
             // printf("\nEnter file name ");            
             // cin >> argu;
             //cin >> ws;            
             //string str = "/media/soumalya/New\ Volume/Ebooks_Mtech/sem1/Operating\ System/Assignment2/Assignment2_VS/"+argu;            char fname[fnamesize];
-            cout << "Enter file path ";
+            //cout << "Enter file path ";
             char filepath[BUFF_SIZE];
             char fname[fnamesize];
             string line;
-            cin >> filepath;
+            strcpy(filepath, argument[1]);
+            //cin >> filepath;
             // strcpy(filepath,argv[3]);
             //cout << filepath <<endl;
             //cin >> line;
@@ -284,21 +344,32 @@ int main(int argc, char *argv[]){
             int numberofchunks = ceil(size*1.0/chunksize);
             sendclientdetails(sockfd, ip, prt, groupid, fname, Buff, numberofchunks);             
             sendSHAdetails(sockfd, fp);
-            sendstring(Buff, filepath, sockfd);   
+            sendstring(Buff, filepath, sockfd);
+            sendstring(Buff, uid1, sockfd);  
             cout << "Sent" << endl;
             fclose(fp);
         }
         else if(x==2){
+            string logg(uid1);
+            if(logg.length()==0){
+                cout << "Please login to download file " << endl;
+                continue;
+            }
             // send(sockfd, &x, sizeof(x), 0);            
             //Download
             // printf("\nEnter file name ");
             // cin >> argu;
             v.clear();
             char fname[fnamesize];
-            strcpy(fname, argu.c_str());
+            char downloadpath[BUFF_SIZE];
+            cout << argument[1]<<" ";
+            strcpy(fname, argument[1]);
+            strcpy(downloadpath, argument[2]);
+            //strcpy(fname, argu.c_str());
             cout << fname <<endl;
             getpeerdetails(fname, sockfd, ip, port, groupid, Buff);
-            FILE *res1= fopen("result.jpg", "w+"); 
+            //FILE *res1= fopen("result.jpg", "w+"); 
+            FILE *res1= fopen(downloadpath, "w+"); 
             fclose(res1); 
             vector < string > vec;  
             vector < peerdetail * > vecpeers;  
@@ -351,6 +422,7 @@ int main(int argc, char *argv[]){
                         strcpy(ki->ptr, vecpeers[k]->fn);
                         //cout << vecpeers[k]->cpath;
                         strcpy(ki->cpath, vecpeers[k]->cpath);
+                        strcpy(ki->downpath, downloadpath);
                         //ki->fp1 = fopen(ki->ptr, "r");
                         // // ki->fp1=fp;
                         // //cout << "PKB: BT " << ki->client << " " << ki->chunk << "\n";
@@ -365,15 +437,20 @@ int main(int argc, char *argv[]){
             }
             for(i=0;i<noc;i++){
                 pthread_join(cthread[i], NULL);
-            }        
+            }    
+            FILE *res2= fopen(downloadpath, "r+"); 
+            checkSHA(res2, vecpeers[0]->filesha);    
+            fclose(res2); 
         }
         else if(x==3){
             //Register
             char uid[BUFF_SIZE],pass[BUFF_SIZE];
-            cout << "Please enter userid ";
-            cin >> uid;
-            cout << "Please enter password ";
-            cin >> pass;
+            // cout << "Please enter userid ";
+            // cin >> uid;
+            // cout << "Please enter password ";
+            // cin >> pass;
+            strcpy(uid, argument[1]);
+            strcpy(pass, argument[2]);
             cout<< "\n Userid " << uid << " Password " << pass << endl;
             bzero(Buff, sizeof(Buff));
             sendstring(Buff, uid, sockfd); //senduserid
@@ -384,10 +461,12 @@ int main(int argc, char *argv[]){
         } 
         else if(x==4){
             //Login            
-            cout << "Please enter userid ";
-            cin >> uid1;
-            cout << "Please enter password ";
-            cin >> pass1;
+            // cout << "Please enter userid ";
+            // cin >> uid1;
+            // cout << "Please enter password ";
+            // cin >> pass1;
+            strcpy(uid1, argument[1]);
+            strcpy(pass1, argument[2]);
             bzero(Buff, sizeof(Buff));
             sendstring(Buff, uid1, sockfd); //senduserid
             bzero(Buff, sizeof(Buff));
@@ -406,6 +485,8 @@ int main(int argc, char *argv[]){
             sendstring(Buff, pass1, sockfd); //sendpassword
             bzero(Buff, sizeof(Buff));
             receivestring(Buff, sockfd); //ack
+            bzero(uid1, sizeof(uid1));
+            bzero(pass1, sizeof(pass1));
             cout << Buff << endl;   
         } 
         close(sockfd);
